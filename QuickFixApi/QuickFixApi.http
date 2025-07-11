@@ -1,0 +1,6 @@
+@QuickFixApi_HostAddress = http://localhost:5161
+
+GET {{QuickFixApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
