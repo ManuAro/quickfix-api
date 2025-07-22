@@ -16,14 +16,14 @@ public class ProvidersController : ControllerBase
         _context = context;
     }
 
-    // 🔍 Obtener todos los proveedores
+    // 🔍 GET: api/providers
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Provider>>> GetProviders()
     {
         return await _context.Providers.ToListAsync();
     }
 
-    // 🔍 Obtener un proveedor por ID
+    // 🔍 GET: api/providers/{id}
     [HttpGet("{id}")]
     public async Task<ActionResult<Provider>> GetProvider(int id)
     {
@@ -35,7 +35,7 @@ public class ProvidersController : ControllerBase
         return provider;
     }
 
-    // 📝 Crear nuevo proveedor
+    // 📝 POST: api/providers
     [HttpPost]
     public async Task<ActionResult<Provider>> Post(Provider provider)
     {
@@ -45,7 +45,7 @@ public class ProvidersController : ControllerBase
         return CreatedAtAction(nameof(GetProvider), new { id = provider.Id }, provider);
     }
 
-    // 🛠️ Actualizar proveedor existente
+    // 🛠️ PUT: api/providers/{id}
     [HttpPut("{id}")]
     public async Task<IActionResult> Put(int id, Provider provider)
     {
@@ -56,6 +56,7 @@ public class ProvidersController : ControllerBase
         if (existing == null)
             return NotFound();
 
+        // Copiar todos los campos
         existing.Name = provider.Name;
         existing.Profession = provider.Profession;
         existing.Rating = provider.Rating;
@@ -76,7 +77,7 @@ public class ProvidersController : ControllerBase
         return NoContent();
     }
 
-    // ❌ Eliminar proveedor
+    // ❌ DELETE: api/providers/{id}
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -90,4 +91,5 @@ public class ProvidersController : ControllerBase
         return NoContent();
     }
 }
+
 
