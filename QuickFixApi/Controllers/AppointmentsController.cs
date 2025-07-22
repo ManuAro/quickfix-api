@@ -52,19 +52,24 @@ public class ApplicationsController : ControllerBase
         if (id != application.Id)
             return BadRequest();
 
-        _context.Entry(application).State = EntityState.Modified;
+        var existing = await _context.Applications.FindAsync(id);
+        if (existing == null)
+            return NotFound();
 
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!_context.Applications.Any(e => e.Id == id))
-                return NotFound();
+        // Campos actualizables (ajustá según tu modelo real)
+        existing.Name = application.Name;
+        existing.Email = application.Email;
+        existing.Phone = application.Phone;
+        existing.Profession = application.Profession;
+        existing.OtherProfession = application.OtherProfession;
+        existing.City = application.City;
+        existing.OtherCity = application.OtherCity;
+        existing.Experience = application.Experience;
+        existing.About = application.About;
+        // 👇 Solo incluir si tu modelo tiene HasCert
+        // existing.HasCert = application.HasCert;
 
-            throw;
-        }
+        await _context.SaveChangesAsync();
 
         return NoContent();
     }
