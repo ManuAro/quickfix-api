@@ -7,82 +7,84 @@ namespace QuickFixApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ApplicationsController : ControllerBase
+public class AppointmentsController : ControllerBase
 {
     private readonly AppDbContext _context;
 
-    public ApplicationsController(AppDbContext context)
+    public AppointmentsController(AppDbContext context)
     {
         _context = context;
     }
 
-    // 🔍 Obtener todas las aplicaciones
+    // ✅ GET: /api/appointments
+    // Obtener todas las citas
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Application>>> GetApplications()
+    public async Task<ActionResult<IEnumerable<Appointment>>> GetAll()
     {
-        return await _context.Applications.ToListAsync();
+        return await _context.Appointments.ToListAsync();
     }
 
-    // 🔍 Obtener una aplicación por ID
+    // ✅ GET: /api/appointments/{id}
+    // Obtener una cita por ID
     [HttpGet("{id}")]
-    public async Task<ActionResult<Application>> GetApplication(int id)
+    public async Task<ActionResult<Appointment>> GetById(int id)
     {
-        var application = await _context.Applications.FindAsync(id);
-
-        if (application == null)
+        var appointment = await _context.Appointments.FindAsync(id);
+        if (appointment == null)
             return NotFound();
 
-        return application;
+        return appointment;
     }
 
-    // 📝 Crear nueva aplicación
+    // ✅ POST: /api/appointments
+    // Crear nueva cita
     [HttpPost]
-    public async Task<ActionResult<Application>> PostApplication(Application application)
+    public async Task<ActionResult<Appointment>> Create(Appointment appointment)
     {
-        _context.Applications.Add(application);
+        _context.Appointments.Add(appointment);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetApplication), new { id = application.Id }, application);
+        return CreatedAtAction(nameof(GetById), new { id = appointment.Id }, appointment);
     }
 
-    // 🛠️ Actualizar una aplicación existente
+    // ✅ PUT: /api/appointments/{id}
+    // Actualizar una cita existente
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutApplication(int id, Application application)
+    public async Task<IActionResult> Update(int id, Appointment updated)
     {
-        if (id != application.Id)
+        if (id != updated.Id)
             return BadRequest();
 
-        var existing = await _context.Applications.FindAsync(id);
-        if (existing == null)
+        var appointment = await _context.Appointments.FindAsync(id);
+        if (appointment == null)
             return NotFound();
 
-        // Campos actualizables (ajustá según tu modelo real)
-        existing.Name = application.Name;
-        existing.Email = application.Email;
-        existing.Phone = application.Phone;
-        existing.Profession = application.Profession;
-        existing.OtherProfession = application.OtherProfession;
-        existing.City = application.City;
-        existing.OtherCity = application.OtherCity;
-        existing.Experience = application.Experience;
-        existing.About = application.About;
-        // 👇 Solo incluir si tu modelo tiene HasCert
-        // existing.HasCert = application.HasCert;
+        // Actualizar campos
+        appointment.ProviderId = updated.ProviderId;
+        appointment.ClientId = updated.ClientId;
+        appointment.ProviderName = updated.ProviderName;
+        appointment.ClientName = updated.ClientName;
+        appointment.ProviderProfession = updated.ProviderProfession;
+        appointment.Date = updated.Date;
+        appointment.Time = updated.Time;
+        appointment.Status = updated.Status;
+        appointment.Location = updated.Location;
+        appointment.Notes = updated.Notes;
 
         await _context.SaveChangesAsync();
-
         return NoContent();
     }
 
-    // ❌ Eliminar aplicación
+    // ✅ DELETE: /api/appointments/{id}
+    // Eliminar una cita
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteApplication(int id)
+    public async Task<IActionResult> Delete(int id)
     {
-        var application = await _context.Applications.FindAsync(id);
-        if (application == null)
+        var appointment = await _context.Appointments.FindAsync(id);
+        if (appointment == null)
             return NotFound();
 
-        _context.Applications.Remove(application);
+        _context.Appointments.Remove(appointment);
         await _context.SaveChangesAsync();
 
         return NoContent();
