@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using QuickFixApi.Models;
 using QuickFixApi.Data;
 
@@ -17,26 +18,26 @@ namespace QuickFixApi.Controllers
 
         // ✅ Obtener todos los servicios
         [HttpGet]
-        public IActionResult GetAll()
+        public async Task<IActionResult> GetAll()
         {
-            var services = _context.Services.ToList();
+            var services = await _context.Services.ToListAsync();
             return Ok(services);
         }
 
         // ✅ Agregar un nuevo servicio
         [HttpPost]
-        public IActionResult Create(Service service)
+        public async Task<IActionResult> Create(Service service)
         {
             _context.Services.Add(service);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetAll), new { id = service.Id }, service);
         }
 
         // ✅ Editar un servicio existente
         [HttpPut("{id}")]
-        public IActionResult Update(int id, Service service)
+        public async Task<IActionResult> Update(int id, Service service)
         {
-            var existing = _context.Services.Find(id);
+            var existing = await _context.Services.FindAsync(id);
             if (existing == null)
                 return NotFound();
 
@@ -45,22 +46,21 @@ namespace QuickFixApi.Controllers
             existing.WorkerId = service.WorkerId;
             existing.Category = service.Category;
 
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return Ok(existing);
         }
 
         // ✅ Eliminar un servicio
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var service = _context.Services.Find(id);
+            var service = await _context.Services.FindAsync(id);
             if (service == null)
                 return NotFound();
 
             _context.Services.Remove(service);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return NoContent();
         }
     }
 }
-
