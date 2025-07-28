@@ -89,4 +89,34 @@ public class AppointmentsController : ControllerBase
 
         return NoContent();
     }
+    // ✅ PATCH: /api/appointments/{id}/provider-response
+// El proveedor responde a una cita (acepta o rechaza)
+[HttpPatch("{id}/provider-response")]
+public async Task<IActionResult> RespondToAppointment(int id, [FromBody] ProviderResponseDto dto)
+{
+    var appointment = await _context.Appointments.FindAsync(id);
+    if (appointment == null)
+        return NotFound(new { message = "Appointment not found." });
+
+    // Validar si ya respondió
+    if (appointment.AcceptedByProvider.HasValue)
+        return BadRequest(new { message = "Provider has already responded to this appointment." });
+
+    // Si acepta, debe enviar EndTime
+    if (dto.AcceptedByProvider == true && dto.EndTime == null)
+        return BadRequest(new { message = "EndTime is required when accepting the appointment." });
+
+    appointment.AcceptedByProvider = dto.AcceptedByProvider;
+    appointment.EndTime = dto.EndTime;
+
+    await _context.SaveChangesAsync();
+    return Ok(new { message = "Provider response recorded successfully." });
+}
+
+// ✅ DTO para la respuesta del proveedor
+public class ProviderResponseDto
+{
+    public bool AcceptedByProvider { get; set; }
+    public DateTime? EndTime { get; set; }
+}
 }

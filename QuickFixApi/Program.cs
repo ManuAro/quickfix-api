@@ -30,6 +30,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// 👇 Aplica migraciones automáticamente al iniciar
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+
 // 👇 Swagger en entorno de desarrollo
 if (app.Environment.IsDevelopment())
 {
