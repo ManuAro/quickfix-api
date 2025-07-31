@@ -191,4 +191,46 @@ public class AppointmentsController : ControllerBase
         }
         return slots;
     }
+ [HttpPatch("{id}/cancel")]
+public async Task<IActionResult> CancelAppointment(int id)
+{
+    var appointment = await _context.Appointments.FindAsync(id);
+    if (appointment == null)
+        return NotFound();
+
+    if (appointment.Status == "cancelled")
+        return BadRequest("La cita ya fue cancelada.");
+
+    appointment.Status = "cancelled";
+    appointment.UpdatedAt = DateTime.UtcNow;
+
+    if (appointment.AcceptedByProvider == true && appointment.EndTime != null)
+    {
+        // Parsear los tiempos
+        var startTime = DateTime.Parse($"{appointment.Date} {appointment.Time}");
+        var endTime = appointment.EndTime.Value;
+
+        // Buscar disponibilidad del proveedor para ese día
+        var availability = await _context.Availabilities
+            .Include(a => a.Slots)
+            .FirstOrDefaultAsync(a =>
+                a.ProviderId == appointment.ProviderId &&
+                a.Date.Date == startTime.Date);
+
+        if (availability != null)
+        {
+            foreach (var slot in availability.Slots)
+            {
+                var slotTime = DateTime.Parse($"{appointment.Date} {slot.Time}");
+                if (slotTime >= startTime && slotTime < endTime)
+                {
+                    slot.Booked = false;
+                }
+            }
+        }
+    }
+
+    await _context.SaveChangesAsync();
+    return Ok(new { message = "Cita cancelada y slots liberados." });
+}
 }

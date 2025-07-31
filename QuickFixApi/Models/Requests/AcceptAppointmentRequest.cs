@@ -4,4 +4,5 @@ namespace QuickFixApi.Models.Requests
     {
         public DateTime EndTime { get; set; }
     }
+
 }

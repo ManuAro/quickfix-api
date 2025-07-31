@@ -6,9 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 👇 Configura el contexto de base de datos
 builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
-});
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // 👇 Habilita los controladores
 builder.Services.AddControllers();
