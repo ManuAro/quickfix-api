@@ -36,12 +36,39 @@ public class AppointmentsController : ControllerBase
         return appointment;
     }
 
-    // ✅ POST: /api/appointments
+    // ✅ POST: /api/appointments (con validación de superposición)
     [HttpPost]
     public async Task<ActionResult<Appointment>> Create(Appointment appointment)
     {
+        // Paso 1: Combinar Date y Time
+        DateTime startTime;
+        try
+        {
+            startTime = DateTime.ParseExact($"{appointment.Date} {appointment.Time}", "yyyy-MM-dd HH:mm", null);
+        }
+        catch (FormatException)
+        {
+            return BadRequest(new { message = "Formato inválido de Date o Time. Esperado: yyyy-MM-dd y HH:mm" });
+        }
+
+        // Paso 2: Calcular endTime (30 min por defecto si no se proporciona)
+        DateTime endTime = appointment.EndTime ?? startTime.AddMinutes(30);
+
+        // Paso 3: Verificar si hay citas superpuestas del mismo proveedor que ya fueron aceptadas
+        var solapada = await _context.Appointments.AnyAsync(a =>
+            a.ProviderId == appointment.ProviderId &&
+            a.AcceptedByProvider == true &&
+            DateTime.ParseExact($"{a.Date} {a.Time}", "yyyy-MM-dd HH:mm", null) < endTime &&
+            a.EndTime > startTime
+        );
+
+        if (solapada)
+            return Conflict(new { message = "El proveedor ya tiene una cita aceptada en ese horario." });
+
+        // Paso 4: Guardar cita
         appointment.CreatedAt = DateTime.UtcNow;
         appointment.UpdatedAt = DateTime.UtcNow;
+        appointment.EndTime ??= endTime;
 
         _context.Appointments.Add(appointment);
         await _context.SaveChangesAsync();
@@ -111,6 +138,37 @@ public class AppointmentsController : ControllerBase
         appointment.EndTime = dto.EndTime;
         appointment.UpdatedAt = DateTime.UtcNow;
 
+        // 🚨 Bloquear slots en Availability si se acepta la cita
+        if (appointment.AcceptedByProvider == true && appointment.EndTime != null)
+        {
+            try
+            {
+                var parsedStart = DateTime.ParseExact($"{appointment.Date} {appointment.Time}", "yyyy-MM-dd HH:mm", null);
+                var appointmentDate = parsedStart.Date;
+
+                var availability = await _context.Availabilities
+                    .FirstOrDefaultAsync(a => a.ProviderId == appointment.ProviderId && a.Date == appointmentDate);
+
+                if (availability != null)
+                {
+                    var slotsOcupados = GetTimeSlotsBetween(parsedStart, appointment.EndTime.Value);
+
+                    foreach (var slot in availability.Slots)
+                    {
+                        if (slotsOcupados.Contains(slot.Time))
+                            slot.Booked = true;
+                    }
+
+                    _context.Entry(availability).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch (FormatException)
+            {
+                return BadRequest(new { message = "Error al convertir Date y Time. Formato esperado: yyyy-MM-dd y HH:mm" });
+            }
+        }
+
         await _context.SaveChangesAsync();
         return Ok(new { message = "Provider response recorded successfully." });
     }
@@ -121,5 +179,16 @@ public class AppointmentsController : ControllerBase
         public bool AcceptedByProvider { get; set; }
         public DateTime? EndTime { get; set; }
     }
-}
 
+    // Utilidad: generar lista de bloques de 30 minutos
+    private static List<string> GetTimeSlotsBetween(DateTime start, DateTime end)
+    {
+        var slots = new List<string>();
+        while (start < end)
+        {
+            slots.Add(start.ToString("HH:mm"));
+            start = start.AddMinutes(30);
+        }
+        return slots;
+    }
+}
