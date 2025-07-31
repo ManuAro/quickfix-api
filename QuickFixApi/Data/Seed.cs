@@ -17,21 +17,41 @@ namespace QuickFixApi.Data
                 UserType = "Client"
             };
 
-            // Crear dos proveedores
+            // Crear dos proveedores (con todos los campos obligatorios)
             var provider1 = new Provider
             {
                 Name = "Ana Plomera",
-                Email = "ana@fix.com",
                 Profession = "Plomería",
-                Location = "Montevideo"
+                Rating = 4.8,
+                Reviews = 12,
+                Location = "Montevideo",
+                Price = "1200",
+                Image = "https://via.placeholder.com/150",
+                Description = "Especialista en arreglos de cañerías y grifería.",
+                Services = new[] { "Reparación", "Instalación" },
+                Phone = "099123456",
+                Email = "ana@fix.com",
+                Availability = "[]",
+                Certifications = "Certificación en Saneamiento Básico",
+                Coordinates = "-34.9011,-56.1645"
             };
 
             var provider2 = new Provider
             {
                 Name = "Carlos Electricista",
-                Email = "carlos@fix.com",
                 Profession = "Electricidad",
-                Location = "Canelones"
+                Rating = 4.5,
+                Reviews = 8,
+                Location = "Canelones",
+                Price = "1500",
+                Image = "https://via.placeholder.com/150",
+                Description = "Instalaciones eléctricas y reparación de cortocircuitos.",
+                Services = new[] { "Instalación", "Reparación" },
+                Phone = "098654321",
+                Email = "carlos@fix.com",
+                Availability = "[]",
+                Certifications = "Electricista autorizado UTE",
+                Coordinates = "-34.7400,-56.2170"
             };
 
             // Crear disponibilidad con slots para provider1
