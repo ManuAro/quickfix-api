@@ -7,19 +7,23 @@ namespace QuickFixApi.Models;
 public class Appointment
 {
     [Key]
-    public int Id { get; set; }
+    [Column("id")]
+    public Guid Id { get; set; }
 
     [Column("provider_id")]
-    public int ProviderId { get; set; }
+    public Guid ProviderId { get; set; }
 
     [Column("client_id")]
-    public int ClientId { get; set; }
+    public Guid ClientId { get; set; }
 
     [Column("provider_name")]
     public string ProviderName { get; set; } = null!;
 
     [Column("client_name")]
     public string ClientName { get; set; } = null!;
+
+    [Column("client_email")]
+    public string ClientEmail { get; set; } = null!; // 🆕 Para validación de reviews
 
     [Column("provider_profession")]
     public string ProviderProfession { get; set; } = null!;
@@ -31,19 +35,13 @@ public class Appointment
     public string Time { get; set; } = null!;
 
     [Column("status")]
-    public string Status { get; set; } = "pending";
-
-    [Column("location")]
-    public string Location { get; set; } = null!;
-
-    [Column("notes")]
-    public string Notes { get; set; } = null!;
+    public string Status { get; set; } = "pending"; // 🆕 accepted / completed / cancelled
 
     [Column("accepted_by_provider")]
-    public bool? AcceptedByProvider { get; set; }
+    public bool AcceptedByProvider { get; set; } = false;
 
     [Column("end_time")]
-    public DateTime? EndTime { get; set; }
+    public string? EndTime { get; set; }
 
     [Column("price")]
     public string? Price { get; set; }
@@ -52,10 +50,8 @@ public class Appointment
     public string? ServiceDescription { get; set; }
 
     [Column("created_at")]
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [Column("updated_at")]
-    public DateTime? UpdatedAt { get; set; }
-    
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
-

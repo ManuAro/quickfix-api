@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using QuickFixApi.Data;
 using QuickFixApi.Models;
 
@@ -17,6 +18,7 @@ public class AvailabilityController : ControllerBase
     }
 
     // ✅ GET: /api/availability
+    // Público: devuelve toda la disponibilidad (puede usarse para debugging o admin panel)
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Availability>>> GetAll()
     {
@@ -24,6 +26,7 @@ public class AvailabilityController : ControllerBase
     }
 
     // ✅ GET: /api/availability/provider/{providerId}
+    // Público: muestra toda la disponibilidad de un proveedor
     [HttpGet("provider/{providerId}")]
     public async Task<ActionResult<IEnumerable<Availability>>> GetByProvider(int providerId)
     {
@@ -37,8 +40,9 @@ public class AvailabilityController : ControllerBase
         return availability;
     }
 
-    // ✅ POST: /api/availability
+    // ⚠️ Solo Admin (o reservado para pruebas): crear disponibilidad manualmente
     [HttpPost]
+    [Authorize(Roles = "admin")]
     public async Task<ActionResult<Availability>> Create(Availability availability)
     {
         _context.Availabilities.Add(availability);
@@ -47,8 +51,9 @@ public class AvailabilityController : ControllerBase
         return CreatedAtAction(nameof(GetByProvider), new { providerId = availability.ProviderId }, availability);
     }
 
-    // ✅ PUT: /api/availability/{id}
+    // ⚠️ Solo Admin: actualizar disponibilidad (normalmente no se usa en producción)
     [HttpPut("{id}")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Update(int id, Availability updated)
     {
         if (id != updated.Id)
@@ -66,8 +71,9 @@ public class AvailabilityController : ControllerBase
         return NoContent();
     }
 
-    // ✅ DELETE: /api/availability/{id}
+    // ⚠️ Solo Admin: eliminar disponibilidad (no se usa desde frontend)
     [HttpDelete("{id}")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var availability = await _context.Availabilities.FindAsync(id);
@@ -80,22 +86,20 @@ public class AvailabilityController : ControllerBase
         return NoContent();
     }
 
-    // ✅ NUEVO: GET /api/availability/provider/{providerId}/available-slots?date=yyyy-MM-dd
+    // ✅ GET /api/availability/provider/{providerId}/available-slots?date=yyyy-MM-dd
+    // Público: muestra solo los horarios libres de un proveedor en una fecha
     [HttpGet("provider/{providerId}/available-slots")]
     public async Task<IActionResult> GetAvailableSlots(int providerId, [FromQuery] string date)
     {
-        // Validar formato de fecha
         if (!DateTime.TryParse(date, out var parsedDate))
             return BadRequest(new { message = "Formato de fecha inválido. Usá yyyy-MM-dd." });
 
-        // Buscar disponibilidad del proveedor en esa fecha
         var availability = await _context.Availabilities
             .FirstOrDefaultAsync(a => a.ProviderId == providerId && a.Date == parsedDate.Date);
 
         if (availability == null)
             return NotFound(new { message = "No hay disponibilidad cargada para ese día." });
 
-        // Filtrar slots disponibles (no Booked)
         var libres = availability.Slots
             .Where(s => !s.Booked)
             .Select(s => s.Time)

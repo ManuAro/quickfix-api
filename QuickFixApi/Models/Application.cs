@@ -1,34 +1,54 @@
-namespace QuickFixApi.Models
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace QuickFixApi.Models;
+
+[Table("applications")]
+public class Application
 {
-    public class Application
-    {
-        public int Id { get; set; }
+    [Key]
+    [Column("id")]
+    public int Id { get; set; } // Está bien que sea int si en Supabase es serial
 
-        // Datos del usuario que aplica
-        public string Name { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string Phone { get; set; } = string.Empty;
+    [Column("name")]
+    public string Name { get; set; } = string.Empty;
 
-        // Profesión
-        public string Profession { get; set; } = string.Empty;
-        public string? OtherProfession { get; set; }
+    [Column("email")]
+    public string Email { get; set; } = string.Empty;
 
-        // Ubicación
-        public string City { get; set; } = string.Empty;
-        public string? OtherCity { get; set; }
+    [Column("phone")]
+    public string Phone { get; set; } = string.Empty;
 
-        // Experiencia y descripción
-        public string Experience { get; set; } = string.Empty;
-        public string About { get; set; } = string.Empty;
+    [Column("profession")]
+    public string Profession { get; set; } = string.Empty;
 
-        // Flags de certificación, herramientas y aceptación
-        public bool HasCertifications { get; set; }
-        public bool HasTools { get; set; }
-        public bool AcceptTerms { get; set; }
+    [Column("other_profession")]
+    public string? OtherProfession { get; set; }
 
-        // Estado de la solicitud
-        public string Status { get; set; } = "pending";
+    [Column("city")]
+    public string City { get; set; } = string.Empty;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    }
+    [Column("other_city")]
+    public string? OtherCity { get; set; }
+
+    [Column("experience")]
+    public string Experience { get; set; } = string.Empty;
+
+    [Column("about")]
+    public string About { get; set; } = string.Empty;
+
+    [Column("has_certifications")]
+    public bool HasCertifications { get; set; }
+
+    [Column("has_tools")]
+    public bool HasTools { get; set; }
+
+    [Column("accept_terms")]
+    public bool AcceptTerms { get; set; }
+
+    [Column("status")]
+    public string Status { get; set; } = "pending";
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

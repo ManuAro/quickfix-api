@@ -4,6 +4,8 @@ using QuickFixApi.Data;
 using QuickFixApi.Models;
 using System.ComponentModel.DataAnnotations.Schema;
 using QuickFixApi.Models.Requests;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace QuickFixApi.Controllers;
 
@@ -18,29 +20,59 @@ public class AppointmentsController : ControllerBase
         _context = context;
     }
 
-    // ✅ GET: /api/appointments
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<Appointment>>> GetAll()
     {
-        return await _context.Appointments.ToListAsync();
+        var userId = GetUserId();
+        var role = GetUserRole();
+
+        if (userId == null || role == null)
+            return Unauthorized();
+
+        IQueryable<Appointment> query = _context.Appointments;
+
+        if (role == "client")
+            query = query.Where(a => a.ClientId == userId);
+        else if (role == "provider")
+            query = query.Where(a => a.ProviderId == userId);
+        else
+            return Forbid();
+
+        var appointments = await query.ToListAsync();
+        return Ok(appointments);
     }
 
-    // ✅ GET: /api/appointments/{id}
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<Appointment>> GetById(int id)
     {
+        var userId = GetUserId();
+        var role = GetUserRole();
+
+        if (userId == null || role == null)
+            return Unauthorized();
+
         var appointment = await _context.Appointments.FindAsync(id);
         if (appointment == null)
             return NotFound();
 
-        return appointment;
+        bool autorizado = role switch
+        {
+            "client" => appointment.ClientId == userId,
+            "provider" => appointment.ProviderId == userId,
+            _ => false
+        };
+
+        if (!autorizado)
+            return Forbid();
+
+        return Ok(appointment);
     }
 
-    // ✅ POST: /api/appointments (con validación de superposición)
     [HttpPost]
     public async Task<ActionResult<Appointment>> Create(Appointment appointment)
     {
-        // Paso 1: Combinar Date y Time
         DateTime startTime;
         try
         {
@@ -51,10 +83,8 @@ public class AppointmentsController : ControllerBase
             return BadRequest(new { message = "Formato inválido de Date o Time. Esperado: yyyy-MM-dd y HH:mm" });
         }
 
-        // Paso 2: Calcular endTime (30 min por defecto si no se proporciona)
         DateTime endTime = appointment.EndTime ?? startTime.AddMinutes(30);
 
-        // Paso 3: Verificar si hay citas superpuestas del mismo proveedor que ya fueron aceptadas
         var solapada = await _context.Appointments.AnyAsync(a =>
             a.ProviderId == appointment.ProviderId &&
             a.AcceptedByProvider == true &&
@@ -65,7 +95,6 @@ public class AppointmentsController : ControllerBase
         if (solapada)
             return Conflict(new { message = "El proveedor ya tiene una cita aceptada en ese horario." });
 
-        // Paso 4: Guardar cita
         appointment.CreatedAt = DateTime.UtcNow;
         appointment.UpdatedAt = DateTime.UtcNow;
         appointment.EndTime ??= endTime;
@@ -76,10 +105,16 @@ public class AppointmentsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = appointment.Id }, appointment);
     }
 
-    // ✅ PUT: /api/appointments/{id}
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<IActionResult> Update(int id, Appointment updated)
     {
+        var userId = GetUserId();
+        var role = GetUserRole();
+
+        if (userId == null || role == null)
+            return Unauthorized();
+
         if (id != updated.Id)
             return BadRequest();
 
@@ -87,7 +122,16 @@ public class AppointmentsController : ControllerBase
         if (appointment == null)
             return NotFound();
 
-        // Actualizar campos
+        bool autorizado = role switch
+        {
+            "client" => appointment.ClientId == userId,
+            "provider" => appointment.ProviderId == userId,
+            _ => false
+        };
+
+        if (!autorizado)
+            return Forbid();
+
         appointment.ProviderId = updated.ProviderId;
         appointment.ClientId = updated.ClientId;
         appointment.ProviderName = updated.ProviderName;
@@ -106,13 +150,29 @@ public class AppointmentsController : ControllerBase
         return NoContent();
     }
 
-    // ✅ DELETE: /api/appointments/{id}
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> Delete(int id)
     {
+        var userId = GetUserId();
+        var role = GetUserRole();
+
+        if (userId == null || role == null)
+            return Unauthorized();
+
         var appointment = await _context.Appointments.FindAsync(id);
         if (appointment == null)
             return NotFound();
+
+        bool autorizado = role switch
+        {
+            "client" => appointment.ClientId == userId,
+            "provider" => appointment.ProviderId == userId,
+            _ => false
+        };
+
+        if (!autorizado)
+            return Forbid();
 
         _context.Appointments.Remove(appointment);
         await _context.SaveChangesAsync();
@@ -120,67 +180,133 @@ public class AppointmentsController : ControllerBase
         return NoContent();
     }
 
-    // ✅ PATCH: /api/appointments/{id}/provider-response
     [HttpPatch("{id}/provider-response")]
+    [Authorize(Roles = "provider")]
     public async Task<IActionResult> RespondToAppointment(int id, [FromBody] ProviderResponseDto dto)
     {
+        var userId = GetUserId();
+        if (userId == null)
+            return Unauthorized();
+
         var appointment = await _context.Appointments.FindAsync(id);
         if (appointment == null)
             return NotFound(new { message = "Appointment not found." });
 
+        if (appointment.ProviderId != userId)
+            return Forbid();
+
         if (appointment.AcceptedByProvider.HasValue)
-            return BadRequest(new { message = "Provider has already responded to this appointment." });
+            return BadRequest(new { message = "El proveedor ya respondió a esta cita." });
 
         if (dto.AcceptedByProvider && dto.EndTime == null)
-            return BadRequest(new { message = "EndTime is required when accepting the appointment." });
+            return BadRequest(new { message = "EndTime es requerido al aceptar la cita." });
+
+        var parsedStart = DateTime.ParseExact($"{appointment.Date} {appointment.Time}", "yyyy-MM-dd HH:mm", null);
+        if (dto.AcceptedByProvider && parsedStart < DateTime.UtcNow)
+            return BadRequest(new { message = "No se puede aceptar una cita que ya pasó." });
 
         appointment.AcceptedByProvider = dto.AcceptedByProvider;
         appointment.EndTime = dto.EndTime;
         appointment.UpdatedAt = DateTime.UtcNow;
 
-        // 🚨 Bloquear slots en Availability si se acepta la cita
-        if (appointment.AcceptedByProvider == true && appointment.EndTime != null)
+        if (dto.AcceptedByProvider && dto.EndTime != null)
         {
-            try
+            var availability = await _context.Availabilities
+                .Include(a => a.Slots)
+                .FirstOrDefaultAsync(a => a.ProviderId == appointment.ProviderId && a.Date == parsedStart.Date);
+
+            if (availability != null)
             {
-                var parsedStart = DateTime.ParseExact($"{appointment.Date} {appointment.Time}", "yyyy-MM-dd HH:mm", null);
-                var appointmentDate = parsedStart.Date;
-
-                var availability = await _context.Availabilities
-                    .FirstOrDefaultAsync(a => a.ProviderId == appointment.ProviderId && a.Date == appointmentDate);
-
-                if (availability != null)
+                var slotsOcupados = GetTimeSlotsBetween(parsedStart, dto.EndTime.Value);
+                foreach (var slot in availability.Slots)
                 {
-                    var slotsOcupados = GetTimeSlotsBetween(parsedStart, appointment.EndTime.Value);
-
-                    foreach (var slot in availability.Slots)
-                    {
-                        if (slotsOcupados.Contains(slot.Time))
-                            slot.Booked = true;
-                    }
-
-                    _context.Entry(availability).State = EntityState.Modified;
-                    await _context.SaveChangesAsync();
+                    if (slotsOcupados.Contains(slot.Time))
+                        slot.Booked = true;
                 }
-            }
-            catch (FormatException)
-            {
-                return BadRequest(new { message = "Error al convertir Date y Time. Formato esperado: yyyy-MM-dd y HH:mm" });
+
+                _context.Entry(availability).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
             }
         }
 
         await _context.SaveChangesAsync();
-        return Ok(new { message = "Provider response recorded successfully." });
+        return Ok(new { message = "Respuesta del proveedor registrada correctamente." });
+    }
+    [HttpPatch("{id}/cancel")]
+    [Authorize]
+    public async Task<IActionResult> CancelAppointment(int id)
+    {
+        var userId = GetUserId();
+        var role = GetUserRole();
+
+        if (userId == null || role == null)
+            return Unauthorized();
+
+        var appointment = await _context.Appointments.FindAsync(id);
+        if (appointment == null)
+            return NotFound();
+
+        bool autorizado = role switch
+        {
+            "client" => appointment.ClientId == userId,
+            "provider" => appointment.ProviderId == userId,
+            _ => false
+        };
+
+        if (!autorizado)
+            return Forbid();
+
+        if (appointment.Status == "cancelled")
+            return BadRequest("La cita ya fue cancelada.");
+
+        if (appointment.Status == "completed")
+            return BadRequest("No se puede cancelar una cita ya completada.");
+
+        appointment.Status = "cancelled";
+        appointment.UpdatedAt = DateTime.UtcNow;
+
+        if (appointment.AcceptedByProvider == true && appointment.EndTime != null)
+        {
+            var startTime = DateTime.ParseExact($"{appointment.Date} {appointment.Time}", "yyyy-MM-dd HH:mm", null);
+            var endTime = appointment.EndTime.Value;
+
+            var availability = await _context.Availabilities
+                .Include(a => a.Slots)
+                .FirstOrDefaultAsync(a =>
+                    a.ProviderId == appointment.ProviderId &&
+                    a.Date.Date == startTime.Date);
+
+            if (availability != null)
+            {
+                foreach (var slot in availability.Slots)
+                {
+                    var slotTime = DateTime.ParseExact($"{appointment.Date} {slot.Time}", "yyyy-MM-dd HH:mm", null);
+                    if (slotTime >= startTime && slotTime < endTime)
+                        slot.Booked = false;
+                }
+
+                _context.Entry(availability).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Cita cancelada y slots liberados." });
     }
 
-    // DTO
+    [Authorize]
+    [HttpGet("secure")]
+    public IActionResult SecureCheck()
+    {
+        return Ok("Token válido. Acceso autorizado.");
+    }
+
     public class ProviderResponseDto
     {
         public bool AcceptedByProvider { get; set; }
         public DateTime? EndTime { get; set; }
     }
 
-    // Utilidad: generar lista de bloques de 30 minutos
     private static List<string> GetTimeSlotsBetween(DateTime start, DateTime end)
     {
         var slots = new List<string>();
@@ -191,46 +317,15 @@ public class AppointmentsController : ControllerBase
         }
         return slots;
     }
- [HttpPatch("{id}/cancel")]
-public async Task<IActionResult> CancelAppointment(int id)
-{
-    var appointment = await _context.Appointments.FindAsync(id);
-    if (appointment == null)
-        return NotFound();
 
-    if (appointment.Status == "cancelled")
-        return BadRequest("La cita ya fue cancelada.");
-
-    appointment.Status = "cancelled";
-    appointment.UpdatedAt = DateTime.UtcNow;
-
-    if (appointment.AcceptedByProvider == true && appointment.EndTime != null)
+    private int? GetUserId()
     {
-        // Parsear los tiempos
-        var startTime = DateTime.Parse($"{appointment.Date} {appointment.Time}");
-        var endTime = appointment.EndTime.Value;
-
-        // Buscar disponibilidad del proveedor para ese día
-        var availability = await _context.Availabilities
-            .Include(a => a.Slots)
-            .FirstOrDefaultAsync(a =>
-                a.ProviderId == appointment.ProviderId &&
-                a.Date.Date == startTime.Date);
-
-        if (availability != null)
-        {
-            foreach (var slot in availability.Slots)
-            {
-                var slotTime = DateTime.Parse($"{appointment.Date} {slot.Time}");
-                if (slotTime >= startTime && slotTime < endTime)
-                {
-                    slot.Booked = false;
-                }
-            }
-        }
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return int.TryParse(idClaim, out var id) ? id : null;
     }
 
-    await _context.SaveChangesAsync();
-    return Ok(new { message = "Cita cancelada y slots liberados." });
-}
+    private string? GetUserRole()
+    {
+        return User.FindFirst(ClaimTypes.Role)?.Value;
+    }
 }

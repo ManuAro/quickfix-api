@@ -1,37 +1,36 @@
 using Microsoft.EntityFrameworkCore;
-using QuickFixApi.Models; // Asegurate que apunte al namespace correcto de tus modelos
+using QuickFixApi.Models;
 
 namespace QuickFixApi.Data
 {
-    // 👇 Esta clase representa la conexión con la base de datos
     public class AppDbContext : DbContext
     {
-        // 👇 Constructor que recibe las opciones (como la connection string)
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
 
-        // 👇 Estas propiedades representan las tablas de la base de datos
         public DbSet<User> Users { get; set; }
         public DbSet<Provider> Providers { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<Service> Services { get; set; }
         public DbSet<Availability> Availabilities { get; set; }
         public DbSet<Application> Applications { get; set; }
+        public DbSet<Review> Reviews { get; set; } // 👈 NUEVO
 
-        // 👇 Acá podés configurar más detalles, como nombres de tablas o relaciones
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Ejemplo de configuración: nombre de tabla manual
-            modelBuilder.Entity<User>().ToTable("Users");
-            modelBuilder.Entity<Provider>().ToTable("Providers");
-            modelBuilder.Entity<Appointment>().ToTable("Appointments");
-            modelBuilder.Entity<Service>().ToTable("Services");
-            modelBuilder.Entity<Availability>().ToTable("Availability");
-            modelBuilder.Entity<Application>().ToTable("Applications");
+            // 🧱 Mapeo explícito de nombres de tabla (coherente con Supabase)
+            modelBuilder.Entity<User>().ToTable("users");
+            modelBuilder.Entity<Provider>().ToTable("providers");
+            modelBuilder.Entity<Appointment>().ToTable("appointments");
+            modelBuilder.Entity<Service>().ToTable("services");
+            modelBuilder.Entity<Availability>().ToTable("availability");
+            modelBuilder.Entity<Application>().ToTable("applications");
+            modelBuilder.Entity<Review>().ToTable("reviews"); // 👈 NUEVO
         }
     }
 }
+
 

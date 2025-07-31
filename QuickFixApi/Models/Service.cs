@@ -1,13 +1,24 @@
-namespace QuickFixApi.Models
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace QuickFixApi.Models;
+
+[Table("services")]
+public class Service
 {
-    public class Service
-    {
-        public int Id { get; set; } // ID del servicio
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; }
 
-        public string Name { get; set; } = null!; // Ej: "Instalaciones eléctricas"
-        public string Description { get; set; } = null!; // Detalle del servicio
+    [Column("name")]
+    public string Name { get; set; } = null!;
 
-        public int WorkerId { get; set; } // ID del proveedor asociado
-        public string Category { get; set; } = null!; // Ej: "Electricidad", "Plomería", etc.
-    }
+    [Column("description")]
+    public string Description { get; set; } = null!;
+
+    [Column("worker_id")]
+    public Guid WorkerId { get; set; } // 👈 Cambiado a Guid (usás uuid en Supabase)
+
+    [Column("category")]
+    public string Category { get; set; } = null!;
 }

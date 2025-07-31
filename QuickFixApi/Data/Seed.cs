@@ -14,7 +14,9 @@ namespace QuickFixApi.Data
             {
                 Name = "Juan Cliente",
                 Email = "juan@ejemplo.com",
-                UserType = "Client"
+                UserType = "Client",
+                Password = "0000",
+                Profession = "Client"
             };
 
             // Crear dos proveedores (con todos los campos obligatorios)

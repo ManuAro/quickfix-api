@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using QuickFixApi.Models;
 using QuickFixApi.Data;
 
@@ -16,7 +17,7 @@ namespace QuickFixApi.Controllers
             _context = context;
         }
 
-        // ✅ Obtener todos los servicios
+        // ✅ Público: Obtener todos los servicios
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -24,8 +25,9 @@ namespace QuickFixApi.Controllers
             return Ok(services);
         }
 
-        // ✅ Agregar un nuevo servicio
+        // ✅ Solo admin: Crear un nuevo servicio
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Create(Service service)
         {
             _context.Services.Add(service);
@@ -33,8 +35,9 @@ namespace QuickFixApi.Controllers
             return CreatedAtAction(nameof(GetAll), new { id = service.Id }, service);
         }
 
-        // ✅ Editar un servicio existente
+        // ✅ Solo admin: Editar un servicio
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Update(int id, Service service)
         {
             var existing = await _context.Services.FindAsync(id);
@@ -50,8 +53,9 @@ namespace QuickFixApi.Controllers
             return Ok(existing);
         }
 
-        // ✅ Eliminar un servicio
+        // ✅ Solo admin: Eliminar un servicio
         [HttpDelete("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> Delete(int id)
         {
             var service = await _context.Services.FindAsync(id);
